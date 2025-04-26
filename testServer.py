@@ -291,7 +291,7 @@ def update_player(userId, politicalPower, militaryExperience, policeAuthority, p
             rankThreshold = specific_rank_info["threshold"]
             if 0 <= points - rankThreshold < pointMultiplier:
                 update_roblox_rank(userId, specific_rank_info["rank"], group)
-                app.logger.info("Player group rank set to specific_rank_info["rank"]")
+                app.logger.info(f"Player group rank set to specific_rank_info['rank']")
     else:
         app.logger.info("Player GROUP rank is too high, no change")
     
