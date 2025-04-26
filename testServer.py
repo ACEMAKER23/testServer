@@ -170,7 +170,7 @@ def get_player(userId):
     c = conn.cursor()
     c.execute('''
         SELECT politicalpower, militaryexperience, policeauthority, 
-               partyplaytime, militaryplaytime, policeplaytime, timelastreset, pointmultiplier, 
+               partyplaytime, militaryplaytime, policeplaytime, timelastreset, pointmultiplier 
         FROM players 
         WHERE userid = %s
     ''', (userId,))
