@@ -25,17 +25,23 @@ def init_db():
     app.logger.info("Data Base Creating")
     conn = get_db_connection()
     c = conn.cursor()
-    c.execute('''CREATE TABLE IF NOT EXISTS players (
-        userid TEXT PRIMARY KEY,
-        politicalpower INTEGER DEFAULT 0,
-        militaryexperience INTEGER DEFAULT 0,
-        policeauthority INTEGER DEFAULT 0,
-        todayplaytime INTEGER DEFAULT 0,
-        cycleindex INTEGER DEFAULT 1,
-        timelastcheck INTEGER DEFAULT 0,
-        timelastreset INTEGER DEFAULT 0,
-        pointmultiplier INTEGER DEFAULT 1
-    )''')
+    c.execute('''
+        CREATE TABLE IF NOT EXISTS players (
+            userid TEXT PRIMARY KEY,
+            
+            politicalpower INTEGER DEFAULT 0,
+            militaryexperience INTEGER DEFAULT 0,
+            policeauthority INTEGER DEFAULT 0,
+            
+            partyplaytime INTEGER DEFAULT 0,
+            militaryplaytime INTEGER DEFAULT 0,
+            policeplaytime INTEGER DEFAULT 0,
+            
+            timelastreset INTEGER DEFAULT 0,
+            
+            pointmultiplier INTEGER DEFAULT 1
+        )
+    ''')
     conn.commit()
     conn.close()
 
@@ -156,19 +162,41 @@ def update_roblox_rank(user_id, rank_id, group):
             else:
                 print(f"Retry failed: {response.text}")
 
+
 @app.route('/get_player/<userId>', methods=['GET'])
 def get_player(userId):
     print(f"Request: Received get_player request")
     conn = get_db_connection()
     c = conn.cursor()
-    c.execute("SELECT politicalpower, militaryexperience, policeauthority, todayplaytime, cycleindex, timelastreset, pointmultiplier FROM players WHERE userid = %s", (userId,))
+    c.execute('''
+        SELECT politicalpower, militaryexperience, policeauthority, 
+               partyplaytime, militaryplaytime, policeplaytime, pointmultiplier, 
+        FROM players 
+        WHERE userid = %s
+    ''', (userId,))
     result = c.fetchone()
     conn.close()
+
     if result:
-        return jsonify({"politicalPower": result[0], "militaryExperience": result[1], "policeAuthority": result[2],
-                        "todayPlayTime": result[3], "cycleIndex": result[4], "timeLastReset": result[5], "pointMultiplier": result[6]})
-    return jsonify({"politicalPower": 0, "militaryExperience": 0, "policeAuthority": 0,
-                    "todayPlayTime": 0, "cycleIndex": 1, "timeLastReset": 0, "pointMultiplier": 1})
+        return jsonify({
+            "politicalpower": result[0],
+            "militaryexperience": result[1],
+            "policeauthority": result[2],
+            "partyplaytime": result[3],
+            "militaryplaytime": result[4],
+            "policeplaytime": result[5],
+            "pointmultiplier": result[6]
+        })
+    else:
+        return jsonify({
+            "politicalpower": 0,
+            "militaryexperience": 0,
+            "policeauthority":0,
+            "partyplaytime": 0,
+            "militaryplaytime": 0,
+            "policeplaytime": 0,
+            "pointmultiplier": 1
+        })
 
     
 
@@ -215,19 +243,24 @@ def get_roblox_rank(user_id, group):
         return None
 
 
-@app.route('/update_player/<userId>/<int:politicalPower>/<int:militaryExperience>/<int:policeAuthority>/<int:todayPlayTime>/<int:cycleIndex>/<int:timeLastCheck>/<int:timeLastReset>/<addType>/<int:pointMultiplier>', methods=['POST'])
-def update_player(userId, politicalPower, militaryExperience, policeAuthority, todayPlayTime, cycleIndex, timeLastCheck, timeLastReset, addType, pointMultiplier):
+@app.route('/update_player/<userId>/<int:politicalPower>/<int:militaryExperience>/<int:policeAuthority>/<int:partyPlayTime>/<int:militaryPlayTime>/<int:policePlayTime>/<int:timeLastReset>/<addType>/<int:pointMultiplier>', methods=['POST'])
+def update_player(userId, politicalPower, militaryExperience, policeAuthority, partyPlayTime, militaryPlayTime, policePlayTime, timeLastReset, addType, pointMultiplier):
     conn = get_db_connection()
     c = conn.cursor()
     c.execute("""
-        INSERT INTO players (userid, politicalpower, militaryexperience, policeauthority, todayplaytime, cycleindex, timelastcheck, timelastreset, pointmultiplier)
+        INSERT INTO players (userid, politicalpower, militaryexperience, policeauthority, partyplaytime, militaryplaytime, policeplaytime, timelastreset, pointmultiplier)
         VALUES (%s, %s, %s, %s, %s, %s, %s, %s, %s)
         ON CONFLICT (userid) DO UPDATE
-        SET politicalpower = %s, militaryexperience = %s, policeauthority = %s, todayplaytime = %s, cycleindex = %s, timelastcheck = %s, timelastreset = %s, pointmultiplier = %s
-    """, (userId, politicalPower, militaryExperience, policeAuthority, todayPlayTime, cycleIndex, timeLastCheck, timeLastReset, pointMultiplier,
-          politicalPower, militaryExperience, policeAuthority, todayPlayTime, cycleIndex, timeLastCheck, timeLastReset, pointMultiplier))
+        SET politicalpower = %s, militaryexperience = %s, policeauthority = %s,
+            partyplaytime = %s, militaryplaytime = %s, policeplaytime = %s,
+            timelastreset = %s, pointmultiplier = %s
+    """, (
+        userId, politicalPower, militaryExperience, policeAuthority, partyPlayTime, militaryPlayTime, policePlayTime, timeLastReset, pointMultiplier,
+        politicalPower, militaryExperience, policeAuthority, partyPlayTime, militaryPlayTime, policePlayTime, timeLastReset, pointMultiplier
+    ))
     conn.commit()
     conn.close()
+    
 
     # Update specific group rank if not "general" # get the rank of the player after update and the threshhold for this rank
     specific_rank_info = None
@@ -247,21 +280,26 @@ def update_player(userId, politicalPower, militaryExperience, policeAuthority, t
         group = "police"
     else:
         return jsonify({"error": "Invalid addType"}), 400
+
     
-    rank=int(get_roblox_rank(userId, "mainGroup"))
-    if (rank>79):
+    # Update specific group rank if applicable, check the player's rank vs the bot's rank
+    botRank=int(get_roblox_rank(8240319152, group))
+    if (botRank>=int(get_roblox_rank(userId, group))):
+        if specific_rank_info:
+            rankThreshold = specific_rank_info["threshold"]
+            if 0 <= points - rankThreshold < pointMultiplier:
+                update_roblox_rank(userId, specific_rank_info["rank"], group)
+                app.logger.info("Player group rank set to specific_rank_info["rank"]")
+    else:
+        app.logger.info("Player GROUP rank is too high, no change")
+    
+    
+    mainRank=int(get_roblox_rank(userId, "mainGroup"))
+    if (mainRank>79):
         app.logger.info("Player rank is too high no change")
         return jsonify({"Update": "No Main Group Rank Change"}), 200
     app.logger.info("Player rank in main group change")
-        
-
-    
-    # Update specific group rank if applicable
-    if specific_rank_info:
-        rankThreshold = specific_rank_info["threshold"]
-        if 0 <= points - rankThreshold < pointMultiplier:
-            update_roblox_rank(userId, specific_rank_info["rank"], group)
-
+  
     # Determine most-played system and update general rank
     points_dict = {
         "party": politicalPower,
@@ -280,16 +318,9 @@ def update_player(userId, politicalPower, militaryExperience, policeAuthority, t
         "politicalPower": politicalPower,
         "militaryExperience": militaryExperience,
         "policeAuthority": policeAuthority,
-        "todayPlayTime": todayPlayTime,
-        "cycleIndex": cycleIndex,
         "pointMultiplier": pointMultiplier,
         "highestSystem": highest_system
     }
-    if specific_rank_info:
-        response["specificRankId"] = specific_rank_info["rank"]
-        response["specificRankThreshold"] = specific_rank_info["threshold"]
-    response["generalRankId"] = general_rank_info["rank"]
-    response["generalRankThreshold"] = general_rank_info["threshold"]
     return jsonify(response)
 
 @app.route('/get_timeLastCheck/<userId>', methods=['GET'])
