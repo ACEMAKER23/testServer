@@ -170,7 +170,7 @@ def get_player(userId):
     c = conn.cursor()
     c.execute('''
         SELECT politicalpower, militaryexperience, policeauthority, 
-               partyplaytime, militaryplaytime, policeplaytime, pointmultiplier, 
+               partyplaytime, militaryplaytime, policeplaytime, timelastreset, pointmultiplier, 
         FROM players 
         WHERE userid = %s
     ''', (userId,))
@@ -185,7 +185,8 @@ def get_player(userId):
             "partyplaytime": result[3],
             "militaryplaytime": result[4],
             "policeplaytime": result[5],
-            "pointmultiplier": result[6]
+            "timelastreset": result[6],
+            "pointmultiplier": result[7]
         })
     else:
         return jsonify({
@@ -195,6 +196,7 @@ def get_player(userId):
             "partyplaytime": 0,
             "militaryplaytime": 0,
             "policeplaytime": 0,
+            "timelastreset": 0,
             "pointmultiplier": 1
         })
 
