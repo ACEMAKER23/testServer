@@ -189,36 +189,32 @@ def get_player(userId):
     
 
 def get_roblox_rank(user_id, group):
-    GROUP_ID = GROUPS.get(group)
-    if not GROUP_ID:
+    app.logger.info(f"Checking in group : {group}")
+    group = GROUPS.get(group)
+    if not group:
         app.logger.info(f"❌ Invalid group: {group}")
         return None
 
-    headers = {
-        "x-api-key": API_KEY,
-        "Content-Type": "application/json"
-    }
-
-    url = f"https://apis.roblox.com/groups/v2/groups/{GROUP_ID}/users/{user_id}"
-
+    url = f"https://groups.roblox.com/v1/users/{user_id}/groups/roles"
     try:
-        response = requests.get(url, headers=headers)
-
+        response = requests.get(url)
         if response.status_code == 200:
             data = response.json()
-            role = data.get("role", {})
-            return role.get("rank", 999)
-
-        elif response.status_code == 404:
-            app.logger.info(f"⚠️ User {user_id} not in group {group}")
-            return 999
-
+            for group in data.get("data", []):
+                if group.get("group", {}).get("id") == group_id:
+                    role = group.get("role", {})
+                    return {
+                        "in_group": True,
+                        "role_id": role.get("id"),
+                        "role_name": role.get("name"),
+                        "rank": role.get("rank")
+                    }
+            return {"in_group": False}
         else:
-            app.logger.info(f"❌ Failed to fetch rank for UserId: {user_id}, Group: {group}, Status: {response.status_code}, Error: {response.text}")
+            app.logger.info(f"Failed to fetch data: {response.status_code}")
             return None
-
     except Exception as e:
-        app.logger.info(f"❌ Exception fetching rank for UserId: {user_id}, Group: {group}, Exception: {str(e)}")
+        app.logger.info(f"An error occurred: {e}")
         return None
 
 
