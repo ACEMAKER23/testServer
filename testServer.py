@@ -190,6 +190,7 @@ def get_player(userId):
 def get_roblox_rank(user_id, group):
     GROUP_ID = GROUPS.get(group)
     app.logger.info(f"Checking in group : {group}")
+    app.logger.info(f"Checking in group : {GROUP_ID}")
     if not GROUP_ID:
         app.logger.info(f"❌ Invalid group: {group}")
         return 999
