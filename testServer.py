@@ -201,7 +201,7 @@ def get_roblox_rank(user_id, group):
         if response.status_code == 200:
             data = response.json()
             for group in data.get("data", []):
-                if group.get("group", {}).get("id") == group_id:
+                if group.get("group", {}).get("id") == group:
                     role = group.get("role", {})
                     return {
                         "in_group": True,
