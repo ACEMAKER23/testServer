@@ -5,7 +5,7 @@ import requests
 import logging
 
 app = Flask(__name__)
-ROBLOX_COOKIE = os.getenv("ROBLOX_COOKIE")
+API_KEY = os.getenv("ROBLOX_API")
 DB_CONN = os.getenv("DATABASE_URL")
 GROUPS = {
     "mainGroup": "32886456",
@@ -126,46 +126,32 @@ def get_generalRanks(points, system):
             return {"rank": rank, "threshold": threshold}
     return {"rank": ranks[0][0], "threshold": ranks[0][1]}
 
-def get_xsrf_token():
-    session = requests.Session()
-    session.cookies[".ROBLOSECURITY"] = ROBLOX_COOKIE
-    url = "https://auth.roblox.com/v2/logout"
-    response = session.post(url)
-    xsrf_token = response.headers.get("x-csrf-token")
-    if not xsrf_token:
-        raise Exception("Failed to retrieve XSRF token")
-    return xsrf_token
-
 def update_roblox_rank(user_id, rank_id, group):
     GROUP_ID = GROUPS[group]
-    url = f"https://groups.roblox.com/v1/groups/{GROUP_ID}/users/{user_id}"
-    xsrf_token = get_xsrf_token()
+    
+    url = f"https://apis.roblox.com/groups/v2/groups/{GROUP_ID}/users/{user_id}"
+
     headers = {
-        "Cookie": f".ROBLOSECURITY={ROBLOX_COOKIE}",
-        "Content-Type": "application/json",
-        "X-CSRF-TOKEN": xsrf_token
+        "x-api-key": API_KEY,
+        "Content-Type": "application/json"
     }
-    data = {"roleId": rank_id}
-    session = requests.Session()
-    session.cookies[".ROBLOSECURITY"] = ROBLOX_COOKIE
-    response = session.patch(url, headers=headers, json=data)
+
+    data = {
+        "roleId": rank_id
+    }
+
+    response = requests.patch(url, headers=headers, json=data)
+
     if response.status_code == 200:
-        print(f"Promoted user {user_id} to rank {rank_id} in group {group}")
+        app.logger.info(f"✅ Promoted user {user_id} to rank {rank_id} in group {group}")
     else:
-        print(f"Failed to promote user {user_id}: {response.text}")
-        if response.status_code == 403 and "XSRF" in response.text:
-            print("Retrying with a fresh XSRF token...")
-            headers["X-CSRF-TOKEN"] = get_xsrf_token()
-            response = session.patch(url, headers=headers, json=data)
-            if response.status_code == 200:
-                print(f"Promoted user {user_id} to rank {rank_id} on retry")
-            else:
-                print(f"Retry failed: {response.text}")
+        app.logger.info(f"❌ Failed to promote user {user_id}: {response.text}")
+        app.logger.info(f"Status Code: {response.status_code}")
 
 
 @app.route('/get_player/<userId>', methods=['GET'])
 def get_player(userId):
-    print(f"Request: Received get_player request")
+    app.logger.info(f"Request: Received get_player request")
     conn = get_db_connection()
     c = conn.cursor()
     c.execute('''
@@ -205,44 +191,36 @@ def get_player(userId):
 def get_roblox_rank(user_id, group):
     GROUP_ID = GROUPS.get(group)
     if not GROUP_ID:
-        print(f"Invalid group: {group}")
-        return None, None
-    
+        app.logger.info(f"❌ Invalid group: {group}")
+        return None
+
+    headers = {
+        "x-api-key": API_KEY,
+        "Content-Type": "application/json"
+    }
+
+    url = f"https://apis.roblox.com/groups/v2/groups/{GROUP_ID}/users/{user_id}"
+
     try:
-        xsrf_token = get_xsrf_token()
-        if not xsrf_token:
-            return None, None
-        headers = {
-            "Cookie": f".ROBLOSECURITY={ROBLOX_COOKIE}",
-            "Content-Type": "application/json",
-            "X-CSRF-TOKEN": xsrf_token
-        }
-        session = requests.Session()
-        session.cookies[".ROBLOSECURITY"] = ROBLOX_COOKIE
-        url = f"https://groups.roblox.com/v1/groups/{GROUP_ID}/users/{user_id}"
-        response = session.get(url, headers=headers)
+        response = requests.get(url, headers=headers)
+
         if response.status_code == 200:
             data = response.json()
             role = data.get("role", {})
             return role.get("rank", 999)
+
         elif response.status_code == 404:
-            print(f"User {user_id} not in group {group}")
+            app.logger.info(f"⚠️ User {user_id} not in group {group}")
             return 999
-        elif response.status_code == 403 and "XSRF" in response.text:
-            print("Retrying with fresh XSRF token...")
-            xsrf_token = get_xsrf_token()
-            if xsrf_token:
-                headers["X-CSRF-TOKEN"] = xsrf_token
-                response = session.get(url, headers=headers)
-                if response.status_code == 200:
-                    data = response.json()
-                    role = data.get("role", {})
-                    return role.get("rank", 999)
-        print(f"Failed to fetch rank for UserId: {user_id}, Group: {group}, Status: {response.status_code}, Error: {response.text}")
-        return None
+
+        else:
+            app.logger.info(f"❌ Failed to fetch rank for UserId: {user_id}, Group: {group}, Status: {response.status_code}, Error: {response.text}")
+            return None
+
     except Exception as e:
-        print(f"Error fetching rank for UserId: {user_id}, Group: {group}, Exception: {str(e)}")
+        app.logger.info(f"❌ Exception fetching rank for UserId: {user_id}, Group: {group}, Exception: {str(e)}")
         return None
+
 
 
 @app.route('/update_player/<userId>/<int:politicalPower>/<int:militaryExperience>/<int:policeAuthority>/<int:partyPlayTime>/<int:militaryPlayTime>/<int:policePlayTime>/<int:timeLastReset>/<addType>/<int:pointMultiplier>', methods=['POST'])
@@ -282,8 +260,6 @@ def update_player(userId, politicalPower, militaryExperience, policeAuthority, p
         group = "police"
     else:
         return jsonify({"error": "Invalid addType"}), 400
-
-    
     # Update specific group rank if applicable, check the player's rank vs the bot's rank
     botRank=int(get_roblox_rank(8240319152, group))
     if (botRank>=int(get_roblox_rank(userId, group))):
@@ -295,10 +271,10 @@ def update_player(userId, politicalPower, militaryExperience, policeAuthority, p
     else:
         app.logger.info("Player GROUP rank is too high, no change")
     
-    
     mainRank=int(get_roblox_rank(userId, "mainGroup"))
-    if (mainRank>79):
-        app.logger.info("Player rank is too high no change")
+    
+    if (mainRank>=botRank):
+        app.logger.info("Player main rank is too high no change")
         return jsonify({"Update": "No Main Group Rank Change"}), 200
     app.logger.info("Player rank in main group change")
   
