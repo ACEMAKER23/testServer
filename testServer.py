@@ -187,36 +187,34 @@ def get_player(userId):
         })
 
     
-
 def get_roblox_rank(user_id, group):
+    GROUP_ID = GROUPS.get(group)
     app.logger.info(f"Checking in group : {group}")
-    group = GROUPS.get(group)
-    if not group:
+    if not GROUP_ID:
         app.logger.info(f"❌ Invalid group: {group}")
-        return None
+        return 999
 
     url = f"https://groups.roblox.com/v1/users/{user_id}/groups/roles"
+
     try:
         response = requests.get(url)
+
         if response.status_code == 200:
             data = response.json()
-            for group in data.get("data", []):
-                if group.get("group", {}).get("id") == group:
-                    role = group.get("role", {})
-                    return {
-                        "in_group": True,
-                        "role_id": role.get("id"),
-                        "role_name": role.get("name"),
-                        "rank": role.get("rank")
-                    }
-            return {"in_group": False}
-        else:
-            app.logger.info(f"Failed to fetch data: {response.status_code}")
-            return None
-    except Exception as e:
-        app.logger.info(f"An error occurred: {e}")
-        return None
+            for g in data.get("data", []):
+                if g.get("group", {}).get("id") == GROUP_ID:
+                    return g.get("role", {}).get("rank", 999)
+            # If user is not found in the group
+            app.logger.info(f"⚠️ User {user_id} not found in group {group}")
+            return 999
 
+        else:
+            app.logger.info(f"❌ Failed to fetch groups for user {user_id}, status: {response.status_code}")
+            return 999
+
+    except Exception as e:
+        app.logger.info(f"❌ Exception fetching rank for user {user_id}: {str(e)}")
+        return 999
 
 
 @app.route('/update_player/<userId>/<int:politicalPower>/<int:militaryExperience>/<int:policeAuthority>/<int:partyPlayTime>/<int:militaryPlayTime>/<int:policePlayTime>/<int:timeLastReset>/<addType>/<int:pointMultiplier>', methods=['POST'])
