@@ -15,6 +15,11 @@ GROUPS = {
 }
 logging.basicConfig(level=logging.INFO)
 
+headers = {
+    "x-api-key": API_KEY,
+    "Content-Type": "application/json"
+}
+
 if not DB_CONN:
     raise ValueError("DATABASE_URL not set in environment variables")
 
@@ -126,29 +131,6 @@ def get_generalRanks(points, system):
             return {"rank": rank, "threshold": threshold}
     return {"rank": ranks[0][0], "threshold": ranks[0][1]}
 
-def update_roblox_rank(user_id, rank_id, group):
-    GROUP_ID = GROUPS[group]
-    
-    url = f"https://apis.roblox.com/groups/v2/groups/{GROUP_ID}/users/{user_id}"
-
-    headers = {
-        "x-api-key": API_KEY,
-        "Content-Type": "application/json"
-    }
-
-    data = {
-        "roleId": rank_id
-    }
-
-    response = requests.patch(url, headers=headers, json=data)
-
-    if response.status_code == 200:
-        app.logger.info(f"✅ Promoted user {user_id} to rank {rank_id} in group {group}")
-    else:
-        app.logger.info(f"❌ Failed to promote user {user_id}: {response.text}")
-        app.logger.info(f"Status Code: {response.status_code}")
-
-
 @app.route('/get_player/<userId>', methods=['GET'])
 def get_player(userId):
     app.logger.info(f"Request: Received get_player request")
@@ -186,27 +168,78 @@ def get_player(userId):
             "pointmultiplier": 1
         })
 
-    
+
+def get_membership_id(user_id, group_id):
+    url = f"https://apis.roblox.com/cloud/v2/groups/{group_id}/memberships?filter=user=='users/{user_id}'"
+    response = requests.get(url, headers=headers)
+
+    if response.status_code == 200:
+        data = response.json()
+        memberships = data.get("groupMemberships", [])
+        if memberships:
+            membership_path = memberships[0]["path"]
+            membership_id = membership_path.split("/")[-1]
+            return membership_id
+        else:
+            print("❌ User is not a member of the group.")
+            return None
+    else:
+        print(f"❌ Failed to fetch membership. Status: {response.status_code}, Error: {response.text}")
+        return None
+
+
+def update_roblox_rank(user_id, group, target_role_id):
+    group_id = GROUPS[group]
+    membership_id = get_membership_id(user_id, group_id)
+    if not membership_id:
+        return False
+
+    patch_url = f"https://apis.roblox.com/cloud/v2/groups/{group_id}/memberships/{membership_id}"
+    data = {
+        "role": f"groups/{group_id}/roles/{target_role_id}"
+    }
+
+    response = requests.patch(patch_url, headers=headers, json=data)
+
+    if response.status_code == 200:
+        print(f"✅ Successfully updated user {user_id} to role {target_role_id}")
+        return True
+    else:
+        print(f"❌ Failed to update role. Status: {response.status_code}, Error: {response.text}")
+        return False
+
+
 def get_roblox_rank(user_id, group):
-    GROUP_ID = GROUPS.get(group)
+    GROUP_ID = GROUPS[group]
     if not GROUP_ID:
         print(f"❌ Invalid group: {group}")
         return None
-
-    headers = {
-        "x-api-key": API_KEY,
-        "Content-Type": "application/json"
-    }
-
-    url = f"https://apis.roblox.com/groups/v2/groups/{GROUP_ID}/users/{user_id}"
-
+    url = f"https://apis.roblox.com/cloud/v2/groups/{GROUP_ID}/memberships?maxPageSize=10&filter=user=='users/{user_id}'"
     try:
         response = requests.get(url, headers=headers)
 
         if response.status_code == 200:
             data = response.json()
-            role = data.get("role", {})
-            return role.get("rank", 999)
+            memberships = data.get("groupMemberships", [])
+            if not memberships:
+                print(f"⚠️ User {user_id} is not in group {GROUP_ID}")
+                return None
+
+            role_path = memberships[0].get("role")
+            if not role_path:
+                print(f"⚠️ Role not found for user {user_id}")
+                return None
+
+            role_id = role_path.split("/")[-1]
+            role_url = f"https://apis.roblox.com/cloud/v2/groups/{GROUP_ID}/roles/{role_id}"
+            role_response = requests.get(role_url, headers=headers)
+
+            if role_response.status_code != 200:
+                print(f"❌ Failed to fetch role data. Status: {role_response.status_code}, Error: {role_response.text}")
+                return None
+
+            role_data = role_response.json()
+            return role_data.get("rank")
 
         elif response.status_code == 404:
             print(f"⚠️ User {user_id} not in group {group}")
@@ -238,10 +271,7 @@ def update_player(userId, politicalPower, militaryExperience, policeAuthority, p
     ))
     conn.commit()
     conn.close()
-    
 
-    # Update specific group rank if not "general" # get the rank of the player after update and the threshhold for this rank
-    specific_rank_info = None
     if addType == "general":
         return jsonify({"Update": "No Point Change"}), 200
     elif addType == "party":
@@ -258,28 +288,28 @@ def update_player(userId, politicalPower, militaryExperience, policeAuthority, p
         group = "police"
     else:
         return jsonify({"error": "Invalid addType"}), 400
-    # Update specific group rank if applicable, check the player's rank vs the bot's rank
-    botRank=int(get_roblox_rank("8240319152", group))
-    playerRank = int(get_roblox_rank(userId, group))
-    if (botRank>=playerRank):
-        if specific_rank_info:
-            rankThreshold = specific_rank_info["threshold"]
-            if 0 <= points - rankThreshold < pointMultiplier:
-                update_roblox_rank(userId, specific_rank_info["rank"], group)
-                app.logger.info(f"Player group rank set to specific_rank_info['rank']")
+
+    botRank = int(get_roblox_rank("8240319152", group) or 0)
+    playerRank = int(get_roblox_rank(userId, group) or 0)
+    app.logger.info(f"botRank is {botRank} and playerRank is {playerRank}")
+    if botRank >= playerRank:
+        rankThreshold = specific_rank_info["threshold"]
+        if 0 <= points - rankThreshold < pointMultiplier:
+            update_roblox_rank(userId, group, specific_rank_info["rank"])
+            app.logger.info(f"Player group rank set to {specific_rank_info['rank']}")
     else:
         app.logger.info("Player GROUP rank is too high, no change")
 
     app.logger.info(f"bot Rank is {botRank} and player rank is {playerRank}")
+
+    mainRank = int(get_roblox_rank(userId, "mainGroup") or 0)
+    botMainRank = int(get_roblox_rank("8240319152", "mainGroup") or 0)
+    app.logger.info(f"botMainRank is {botMainRank} and playerMainRank is {mainRank}")
     
-    mainRank=int(get_roblox_rank(userId, "mainGroup"))
-    
-    if (mainRank>=botRank):
+    if mainRank >= botMainRank:
         app.logger.info("Player main rank is too high no change")
         return jsonify({"Update": "No Main Group Rank Change"}), 200
-    app.logger.info("Player rank in main group change")
-  
-    # Determine most-played system and update general rank
+    
     points_dict = {
         "party": politicalPower,
         "military": militaryExperience,
@@ -289,10 +319,11 @@ def update_player(userId, politicalPower, militaryExperience, policeAuthority, p
     highest_points = points_dict[highest_system]
     general_rank_info = get_generalRanks(highest_points, highest_system)
     general_rank_threshold = general_rank_info["threshold"]
-    if 0 <= highest_points - general_rank_threshold < pointMultiplier:
-        update_roblox_rank(userId, general_rank_info["rank"], "mainGroup")
 
-    # Return response
+    if 0 <= highest_points - general_rank_threshold < pointMultiplier:
+        update_roblox_rank(userId, "mainGroup", general_rank_info["rank"])
+        app.logger.info("Player rank in main group changing")
+
     response = {
         "politicalPower": politicalPower,
         "militaryExperience": militaryExperience,
@@ -301,26 +332,3 @@ def update_player(userId, politicalPower, militaryExperience, policeAuthority, p
         "highestSystem": highest_system
     }
     return jsonify(response)
-
-@app.route('/get_timeLastCheck/<userId>', methods=['GET'])
-def get_timeLastCheck(userId):
-    conn = get_db_connection()
-    c = conn.cursor()
-    c.execute("SELECT timelastcheck FROM players WHERE userid = %s", (userId,))
-    result = c.fetchone()
-    conn.close()
-    if result:
-        return jsonify({"timeLastCheck": result[0]})
-    return jsonify({"timeLastCheck": 0})
-
-@app.route('/all_players', methods=['GET'])
-def all_players():
-    conn = get_db_connection()
-    c = conn.cursor()
-    c.execute("SELECT * FROM players")
-    rows = c.fetchall()
-    conn.close()
-    players = [{"userId": row[0], "politicalPower": row[1], "militaryExperience": row[2], "policeAuthority": row[3],
-                "todayPlayTime": row[4], "cycleIndex": row[5], "timeLastCheck": row[6], "timeLastReset": row[7], "pointMultiplier": row[8]} 
-               for row in rows]
-    return jsonify(players)
