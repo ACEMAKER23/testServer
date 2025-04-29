@@ -260,7 +260,7 @@ def update_player(userId, politicalPower, militaryExperience, policeAuthority, p
         return jsonify({"error": "Invalid addType"}), 400
     # Update specific group rank if applicable, check the player's rank vs the bot's rank
     botRank=int(get_roblox_rank(8240319152, group))
-    playerRank = int(get_roblox_rank(userId, group)
+    playerRank = int(get_roblox_rank(userId, group))
     if (botRank>=playerRank)):
         if specific_rank_info:
             rankThreshold = specific_rank_info["threshold"]
