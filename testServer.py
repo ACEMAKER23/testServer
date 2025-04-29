@@ -91,8 +91,8 @@ generalRanks = {
     ],
     "police": [
         ("328484011", 1),   # Law Enforcement Enlisted
-        ("100026047", 15),  # Law Enforcement Officer
-        ("100026053", 70)   # Law Enforcement Leadership
+        ("324914090", 15),  # Law Enforcement Officer
+        ("324358078", 70)   # Law Enforcement Leadership
     ],
     "party": [
         ("100366970", 1),   # Ministry Employee
