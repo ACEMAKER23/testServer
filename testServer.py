@@ -189,33 +189,36 @@ def get_player(userId):
     
 def get_roblox_rank(user_id, group):
     GROUP_ID = GROUPS.get(group)
-    app.logger.info(f"Checking in group : {group}")
-    app.logger.info(f"Checking in group : {GROUP_ID}")
     if not GROUP_ID:
-        app.logger.info(f"❌ Invalid group: {group}")
-        return 999
+        print(f"❌ Invalid group: {group}")
+        return None
 
-    url = f"https://groups.roblox.com/v1/users/{user_id}/groups/roles"
+    headers = {
+        "x-api-key": API_KEY,
+        "Content-Type": "application/json"
+    }
+
+    url = f"https://apis.roblox.com/groups/v2/groups/{GROUP_ID}/users/{user_id}"
 
     try:
-        response = requests.get(url)
+        response = requests.get(url, headers=headers)
 
         if response.status_code == 200:
             data = response.json()
-            for g in data.get("data", []):
-                if g.get("group", {}).get("id") == GROUP_ID:
-                    return g.get("role", {}).get("rank", 999)
-            # If user is not found in the group
-            app.logger.info(f"⚠️ User {user_id} not found in group {group}")
+            role = data.get("role", {})
+            return role.get("rank", 999)
+
+        elif response.status_code == 404:
+            print(f"⚠️ User {user_id} not in group {group}")
             return 999
 
         else:
-            app.logger.info(f"❌ Failed to fetch groups for user {user_id}, status: {response.status_code}")
-            return 999
+            print(f"❌ Failed to fetch rank for UserId: {user_id}, Group: {group}, Status: {response.status_code}, Error: {response.text}")
+            return None
 
     except Exception as e:
-        app.logger.info(f"❌ Exception fetching rank for user {user_id}: {str(e)}")
-        return 999
+        print(f"❌ Exception fetching rank for UserId: {user_id}, Group: {group}, Exception: {str(e)}")
+        return None
 
 
 @app.route('/update_player/<userId>/<int:politicalPower>/<int:militaryExperience>/<int:policeAuthority>/<int:partyPlayTime>/<int:militaryPlayTime>/<int:policePlayTime>/<int:timeLastReset>/<addType>/<int:pointMultiplier>', methods=['POST'])
@@ -257,7 +260,8 @@ def update_player(userId, politicalPower, militaryExperience, policeAuthority, p
         return jsonify({"error": "Invalid addType"}), 400
     # Update specific group rank if applicable, check the player's rank vs the bot's rank
     botRank=int(get_roblox_rank(8240319152, group))
-    if (botRank>=int(get_roblox_rank(userId, group))):
+    playerRank = int(get_roblox_rank(userId, group)
+    if (botRank>=playerRank)):
         if specific_rank_info:
             rankThreshold = specific_rank_info["threshold"]
             if 0 <= points - rankThreshold < pointMultiplier:
@@ -265,6 +269,8 @@ def update_player(userId, politicalPower, militaryExperience, policeAuthority, p
                 app.logger.info(f"Player group rank set to specific_rank_info['rank']")
     else:
         app.logger.info("Player GROUP rank is too high, no change")
+
+    app.logger.info(f"bot Rank is {botRank} and player rank is {playerRank}")
     
     mainRank=int(get_roblox_rank(userId, "mainGroup"))
     
