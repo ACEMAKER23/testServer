@@ -327,7 +327,7 @@ def update_player(userId, politicalPower, militaryExperience, policeAuthority, p
     if 0 <= highest_points - general_rank_threshold < pointMultiplier:
         update_roblox_rank(userId, "mainGroup", general_rank)
         app.logger.info("Player rank in main group changing")
-    else 
+    else:
         app.logger.info("not enough point for main group changing")
 
     response = {
