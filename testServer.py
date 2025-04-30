@@ -20,6 +20,11 @@ headers = {
     "Content-Type": "application/json"
 }
 
+# Allowed stats for updates
+ALLOWED_STATS = {
+    "politicalpower", "militaryexperience", "policeauthority",
+}
+
 if not DB_CONN:
     raise ValueError("DATABASE_URL not set in environment variables")
 
@@ -338,3 +343,113 @@ def update_player(userId, politicalPower, militaryExperience, policeAuthority, p
         "highestSystem": highest_system
     }
     return jsonify(response)
+
+'''
+@app.route('/admin/add_stat', methods=['POST'])
+def add_stat():
+    data = request.get_json()
+    auth_token = request.headers.get("Authorization")
+
+    if auth_token != os.getenv("AUTH_TOKEN"):
+        return jsonify({"error": "Unauthorized"}), 403
+
+    userid = data.get('userid')
+    stat = data.get('stat')
+    amount = data.get('amount')
+
+    if not userid or not stat or amount is None:
+        return jsonify({"error": "Missing required fields"}), 400
+
+    if stat not in ALLOWED_STATS:
+        return jsonify({"error": "Invalid stat name"}), 400
+
+    try:
+        amount = int(amount)
+    except ValueError:
+        return jsonify({"error": "Amount must be an integer"}), 400
+
+    conn = get_db_connection()
+    cur = conn.cursor()
+
+    # Check if player exists
+    cur.execute("SELECT * FROM players WHERE userid = %s", (userid,))
+    player_data = cur.fetchone()
+
+    if not player_data:
+        cur.close()
+        conn.close()
+        return jsonify({"error": "Player not found"}), 404
+
+    # Fetch existing stats
+    cur.execute("""
+        SELECT politicalpower, militaryexperience, policeauthority
+        FROM players
+        WHERE userid = %s
+    """, (userid,))
+    result = cur.fetchone()
+
+    political_power = result[0]
+    military_experience = result[1]
+    police_authority = result[2]
+
+    # Update the appropriate stat
+    if stat == "politicalpower":
+        political_power += amount
+        group = "party"
+        specific_rank_info = get_partyRanks(political_power)
+    elif stat == "militaryexperience":
+        military_experience += amount
+        group = "military"
+        specific_rank_info = get_militaryRanks(military_experience)
+    elif stat == "policeauthority":
+        police_authority += amount
+        group = "police"
+        specific_rank_info = get_policeRanks(police_authority)
+
+    # Save updates to database
+    cur.execute("""
+        UPDATE players
+        SET politicalpower = %s,
+            militaryexperience = %s,
+            policeauthority = %s
+        WHERE userid = %s
+    """, (political_power, military_experience, police_authority, userid))
+    conn.commit()
+
+    # Assume these helper functions exist:
+    # get_roblox_rank(), update_roblox_rank(), get_generalRanks()
+
+    bot_rank = int(get_roblox_rank("8240319152", group) or 0)
+    player_rank = int(get_roblox_rank(userid, group) or 0)
+
+    if bot_rank >= player_rank:
+        update_roblox_rank(userid, group, specific_rank_info["rank"])
+
+    # Handle main group promotion logic
+    points_dict = {
+        "party": political_power,
+        "military": military_experience,
+        "police": police_authority
+    }
+    highest_system = max(points_dict, key=points_dict.get)
+    highest_points = points_dict[highest_system]
+    general_rank_info = get_generalRanks(highest_points, highest_system)
+
+    main_rank = int(get_roblox_rank(userid, "mainGroup") or 0)
+    bot_main_rank = int(get_roblox_rank("8240319152", "mainGroup") or 0)
+
+    if main_rank < bot_main_rank and highest_points >= general_rank_info["threshold"]:
+        update_roblox_rank(userid, "mainGroup", general_rank_info["rank"])
+
+    cur.close()
+    conn.close()
+
+    response = {
+        "politicalPower": political_power,
+        "militaryExperience": military_experience,
+        "policeAuthority": police_authority,
+        "highestSystem": highest_system
+    }
+
+    return jsonify(response), 200
+    '''
