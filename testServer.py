@@ -358,6 +358,15 @@ def add_stat():
     userid = data.get('userid')
     stat = data.get('stat')
     amount = data.get('amount')
+    
+    response = {
+        "politicalPower": 1,
+        "militaryExperience": 1,
+        "policeAuthority": 1,
+        "highestSystem": 1
+    }
+
+    return jsonify(response), 200
     '''
     if not userid or not stat or amount is None:
         return jsonify({"error": "Missing required fields"}), 400
