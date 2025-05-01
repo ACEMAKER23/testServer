@@ -344,7 +344,7 @@ def update_player(userId, politicalPower, militaryExperience, policeAuthority, p
     }
     return jsonify(response)
 
-'''
+
 @app.route('/admin/add_stat', methods=['POST'])
 def add_stat():
     data = request.get_json()
@@ -352,11 +352,13 @@ def add_stat():
 
     if auth_token != os.getenv("AUTH_TOKEN"):
         return jsonify({"error": "Unauthorized"}), 403
+    else: app.logger.info(f"authorized")
+
 
     userid = data.get('userid')
     stat = data.get('stat')
     amount = data.get('amount')
-
+    '''
     if not userid or not stat or amount is None:
         return jsonify({"error": "Missing required fields"}), 400
 
