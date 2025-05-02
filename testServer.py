@@ -129,6 +129,7 @@ def get_partyRanks(points):
             return {"rank": rank, "threshold": threshold}
     return {"rank": "99759441", "threshold": 1}
 
+
 def get_generalRanks(points, system):
     ranks = generalRanks.get(system, generalRanks["military"])  # Default to military if system invalid
     for rank, threshold in reversed(ranks):
@@ -139,6 +140,7 @@ def get_generalRanks(points, system):
 @app.route('/get_player/<userId>', methods=['GET'])
 def get_player(userId):
     app.logger.info(f"Request: Received get_player request")
+
     conn = get_db_connection()
     c = conn.cursor()
     c.execute('''
@@ -148,9 +150,9 @@ def get_player(userId):
         WHERE userid = %s
     ''', (userId,))
     result = c.fetchone()
-    conn.close()
 
     if result:
+        conn.close()
         return jsonify({
             "politicalpower": result[0],
             "militaryexperience": result[1],
@@ -162,16 +164,58 @@ def get_player(userId):
             "pointmultiplier": result[7]
         })
     else:
-        return jsonify({
-            "politicalpower": 0,
-            "militaryexperience": 0,
-            "policeauthority":0,
-            "partyplaytime": 0,
-            "militaryplaytime": 0,
-            "policeplaytime": 0,
-            "timelastreset": 0,
-            "pointmultiplier": 1
-        })
+        # Player not found, initialize
+        data = initializePlayer(userId, conn)
+        conn.commit()
+        conn.close()
+        return jsonify(data)
+
+
+def get_rank_points(rankid, rank_list):
+    if rankid is None:
+        return 1
+    for rid, points in rank_list:
+        if rid == str(rankid):
+            return points
+    return max(points for _, points in rank_list)
+
+
+def initializePlayer(user_id, conn):
+    with conn.cursor() as cur:
+        # Get player's Roblox group ranks
+        party_rank = get_roblox_rank(user_id, "party", "long")
+        military_rank = get_roblox_rank(user_id, "military", "long")
+        police_rank = get_roblox_rank(user_id, "police", "long")
+
+        # Determine point values
+        political_power = get_rank_points(party_rank, partyRanks)
+        military_experience = get_rank_points(military_rank, militaryRanks)
+        police_authority = get_rank_points(police_rank, policeRanks)
+
+        # Insert into database
+        cur.execute("""
+            INSERT INTO players (
+                userid, politicalpower, militaryexperience, policeauthority,
+                partyplaytime, militaryplaytime, policeplaytime,
+                timelastreset, pointmultiplier
+            ) VALUES (%s, %s, %s, %s, 0, 0, 0, 0, 1)
+        """, (
+            user_id,
+            political_power,
+            military_experience,
+            police_authority
+        ))
+
+    return {
+        "politicalpower": political_power,
+        "militaryexperience": military_experience,
+        "policeauthority": police_authority,
+        "partyplaytime": 0,
+        "militaryplaytime": 0,
+        "policeplaytime": 0,
+        "timelastreset": 0,
+        "pointmultiplier": 1
+    }
 
 
 def get_membership_id(user_id, group_id):
