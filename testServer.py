@@ -389,7 +389,7 @@ def update_player(userId, politicalPower, militaryExperience, policeAuthority, p
         "pointMultiplier": pointMultiplier,
         "highestSystem": highest_system
     }
-    return jsonify(response)
+    return jsonify(response), 200
 
 
 @app.route('/admin/add_stat', methods=['POST'])
