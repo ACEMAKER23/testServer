@@ -451,6 +451,38 @@ def add_stat():
     else:
         response["mainPromotion"]="Player main rank unchanged because the current rank is too high"
     return jsonify(response), 200
+
+@app.route("/admin/add_player", methods=["POST"])
+def add_player():
+    if request.headers.get("Authorization") != AUTH_TOKEN:
+        return jsonify({"error": "Invalid authorization token"}), 401
+    data = request.get_json()
+    userid = data.get("userid")
+    if not userid:
+        return jsonify({"error": "Missing userid"}), 400
+    try:
+        conn = get_db_connection()
+        cur = conn.cursor()
+        # Check if userid already exists
+        cur.execute("SELECT userid FROM users WHERE userid = ?", (userid,))
+        if cur.fetchone():
+            cur.close()
+            conn.close()
+            return jsonify({"error": "User already exists in the database"}), 409
+        # Insert new user with default values
+        cur.execute("""
+            INSERT INTO users (userid, politicalpower, militaryexperience, policeauthority, partyplaytime, militaryplaytime, policeplaytime, timelastreset, pointmultiplier)
+            VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)
+        """, (userid, 0, 0, 0, 0, 0, 0, 0, 1))
+        conn.commit()
+        cur.close()
+        conn.close()
+        return jsonify({"message": f"User {userid} added with default stats"}), 200
+    except Exception as e:
+        cur.close()
+        conn.close()
+        return jsonify({"error": str(e)}), 500
+
     '''
 
 
