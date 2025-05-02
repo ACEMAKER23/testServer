@@ -358,21 +358,68 @@ def add_stat():
     userid = data.get('userid')
     stat = data.get('stat')
     amount = data.get('amount')
+
+    if not userid or not stat or amount is None:
+        return jsonify({"error": "Player Not Found, add the player using add command first"}), 400
     
+    if not userid or not stat or amount is None:
+        return jsonify({"error": "Missing required fields"}), 400
+
+    try:
+        amount = int(amount)
+    except ValueError:
+        return jsonify({"error": "Amount must be an integer"}), 400
+
+    conn = get_db_connection()
+    cur = conn.cursor()
+    
+    # Fetch existing stats
+    cur.execute("""
+        SELECT politicalpower, militaryexperience, policeauthority
+        FROM players
+        WHERE userid = %s
+    """, (userid,))
+    result = cur.fetchone()
+
+    if not result: 
+        return jsonify({"error": "User doesn't exist in database, add user first"}), 400
+   
+    political_power = result[0]
+    military_experience = result[1]
+    police_authority = result[2]
+
+
+    if stat == "politicalpower":
+        political_power+=amount
+    elif stat == "militaryexperience":
+        military_experience+=amount
+    elif stat == "policeauthority":
+        police_authority+=amount
+    else:
+        return jsonify({"error": "Invalid Stat Type"}), 400
+
+    cur.execute("""
+        UPDATE players
+        SET politicalpower = %s,
+            militaryexperience = %s,
+            policeauthority = %s
+        WHERE userid = %s
+    """, (political_power, military_experience, police_authority, userid))
+    conn.commit()
+    cur.close()
+    conn.close()
+
     response = {
-        "politicalPower": 1,
-        "militaryExperience": 1,
-        "policeAuthority": 1,
+        "politicalPower": political_power,
+        "militaryExperience": military_experience,
+        "policeAuthority": police_authority,
         "highestSystem": 1
     }
 
     return jsonify(response), 200
     '''
-    if not userid or not stat or amount is None:
-        return jsonify({"error": "Missing required fields"}), 400
 
-    if stat not in ALLOWED_STATS:
-        return jsonify({"error": "Invalid stat name"}), 400
+
 
     try:
         amount = int(amount)
