@@ -258,7 +258,7 @@ def update_roblox_rank(user_id, group, target_role_id):
         return False
 
 
-def get_roblox_rank(user_id, group):
+def get_roblox_rank(user_id, group, t):
     GROUP_ID = GROUPS[group]
     if not GROUP_ID:
         print(f"❌ Invalid group: {group}")
@@ -280,6 +280,8 @@ def get_roblox_rank(user_id, group):
                 return None
 
             role_id = role_path.split("/")[-1]
+            if t == "long":
+                return role_id
             role_url = f"https://apis.roblox.com/cloud/v2/groups/{GROUP_ID}/roles/{role_id}"
             role_response = requests.get(role_url, headers=headers)
 
@@ -295,7 +297,8 @@ def get_roblox_rank(user_id, group):
             return 999
 
         else:
-            print(f"❌ Failed to fetch rank for UserId: {user_id}, Group: {group}, Status: {response.status_code}, Error: {response.text}")
+            print(
+                f"❌ Failed to fetch rank for UserId: {user_id}, Group: {group}, Status: {response.status_code}, Error: {response.text}")
             return None
 
     except Exception as e:
