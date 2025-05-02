@@ -352,8 +352,8 @@ def add_stat():
 
     if auth_token != os.getenv("AUTH_TOKEN"):
         return jsonify({"error": "Unauthorized"}), 403
-    else: app.logger.info(f"authorized")
-
+    else:
+        app.logger.info(f"authorized")
 
     userid = data.get('userid')
     stat = data.get('stat')
@@ -361,7 +361,7 @@ def add_stat():
 
     if not userid or not stat or amount is None:
         return jsonify({"error": "Player Not Found, add the player using add command first"}), 400
-    
+
     if not userid or not stat or amount is None:
         return jsonify({"error": "Missing required fields"}), 400
 
@@ -372,7 +372,7 @@ def add_stat():
 
     conn = get_db_connection()
     cur = conn.cursor()
-    
+
     # Fetch existing stats
     cur.execute("""
         SELECT politicalpower, militaryexperience, policeauthority
@@ -381,20 +381,25 @@ def add_stat():
     """, (userid,))
     result = cur.fetchone()
 
-    if not result: 
+    if not result:
         return jsonify({"error": "User doesn't exist in database, add user first"}), 400
-   
+
     political_power = result[0]
     military_experience = result[1]
     police_authority = result[2]
 
-
     if stat == "politicalpower":
-        political_power+=amount
+        political_power += amount
+        group = "party"
+        specific_rank_info = get_partyRanks(political_power)
     elif stat == "militaryexperience":
-        military_experience+=amount
+        military_experience += amount
+        group = "military"
+        specific_rank_info = get_militaryRanks(military_experience)
     elif stat == "policeauthority":
-        police_authority+=amount
+        police_authority += amount
+        group = "police"
+        specific_rank_info = get_policeRanks(police_authority)
     else:
         return jsonify({"error": "Invalid Stat Type"}), 400
 
@@ -413,9 +418,38 @@ def add_stat():
         "politicalPower": political_power,
         "militaryExperience": military_experience,
         "policeAuthority": police_authority,
-        "highestSystem": 1
+        "highestSystem": "unknown",
+        "divisionPromotion": "Player Rank Didn't Change",
+        "mainPromotion": "Player Rank Didn't Change",
     }
 
+    bot_main_rank = int(get_roblox_rank("8240319152", "mainGroup") or 0)
+    player_main_rank = int(get_roblox_rank(userid, "mainGroup") or 0)
+    bot_division_rank = int(get_roblox_rank("8240319152", group) or 0)
+    player_division_rank = int(get_roblox_rank(userid, group) or 0)
+
+    if bot_division_rank > player_division_rank:
+        update_roblox_rank(userid, group, specific_rank_info["rank"])
+        response["divisionPromotion"] = f"Player division rank set to {specific_rank_info['rank']}"
+    else:
+        response["divisionPromotion"]="Player division rank unchanged because the current rank is too high"
+
+    points_dict = {
+        "party": political_power,
+        "military": military_experience,
+        "police": police_authority
+    }
+    highest_system = max(points_dict, key=points_dict.get)
+    highest_points = points_dict[highest_system]
+    response["highestSystem"] = highest_system
+    
+    if bot_main_rank > player_main_rank:
+        general_rank_info = get_generalRanks(highest_points, highest_system)
+        general_rank=general_rank_info["rank"]
+        update_roblox_rank(userid, "mainGroup", general_rank)
+        response["mainPromotion"] = f"Player main division rank set to {general_rank}"
+    else:
+        response["mainPromotion"]="Player main rank unchanged because the current rank is too high"
     return jsonify(response), 200
     '''
 
