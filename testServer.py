@@ -403,7 +403,7 @@ def update_player(userId, politicalPower, militaryExperience, policeAuthority, p
     }
     return jsonify(response), 200
 
-@app.route('/addPoint/<userId>/<pointType>/<int:amount>', methods=['POST'])
+@app.route('/add_point/<userId>/<pointType>/<int:amount>', methods=['POST'])
 def addPoint(userId, pointType, amount):
     if pointType not in ['politicalPower', 'militaryExperience', 'policeAuthority']:
         return jsonify({'error': 'Invalid pointType'}), 400
@@ -460,16 +460,11 @@ def get_points(userId):
     conn.close()
 
     if result is None:
-        return jsonify({'error': 'User not found'}), 404
         app.logger.info(f"Not Data returned")
+        return jsonify({'error': 'User not found'}), 404
     app.logger.info(f"Data returned, {result[0]}, {result[1]}, {result[2]}")
     
-    return 
-    jsonify({
-        'politicalPower': result[0],
-        'militaryExperience': result[1],
-        'policeAuthority': result[2]
-    }), 200
+    return jsonify({'politicalPower': result[0],'militaryExperience': result[1],'policeAuthority': result[2]}), 200
 
 @app.route('/admin/add_stat', methods=['POST'])
 def add_stat():
