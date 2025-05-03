@@ -461,8 +461,11 @@ def get_points(userId):
 
     if result is None:
         return jsonify({'error': 'User not found'}), 404
-
-    return jsonify({
+        app.logger.info(f"Not Data returned")
+    app.logger.info(f"Data returned, {result[0]}, {result[1]}, {result[2]}")
+    
+    return 
+    jsonify({
         'politicalPower': result[0],
         'militaryExperience': result[1],
         'policeAuthority': result[2]
