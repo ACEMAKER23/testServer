@@ -28,8 +28,10 @@ ALLOWED_STATS = {
 if not DB_CONN:
     raise ValueError("DATABASE_URL not set in environment variables")
 
+
 def get_db_connection():
     return psycopg2.connect(DB_CONN)
+
 
 def init_db():
     app.logger.info("Data Base Creating")
@@ -38,32 +40,33 @@ def init_db():
     c.execute('''
         CREATE TABLE IF NOT EXISTS players (
             userid TEXT PRIMARY KEY,
-            
+
             politicalpower INTEGER DEFAULT 0,
             militaryexperience INTEGER DEFAULT 0,
             policeauthority INTEGER DEFAULT 0,
-            
+
             partyplaytime INTEGER DEFAULT 0,
             militaryplaytime INTEGER DEFAULT 0,
             policeplaytime INTEGER DEFAULT 0,
-            
+
             timelastreset INTEGER DEFAULT 0,
-            
+
             pointmultiplier INTEGER DEFAULT 1
         )
     ''')
     conn.commit()
     conn.close()
 
+
 init_db()
 
 partyRanks = [
     ("99362899", 1),  # PM
     ("99759441", 2),  # PC
-    ("99759446", 10), # PB
-    ("99759448", 20), # BS
-    ("99759449", 35), # PS
-    ("107389287", 45), # Party Committee
+    ("99759446", 10),  # PB
+    ("99759448", 20),  # BS
+    ("99759449", 35),  # PS
+    ("107389287", 45),  # Party Committee
     ("356554074", 65)  # PSA
 ]
 
@@ -71,45 +74,46 @@ militaryRanks = [
     ("100066428", 1),  # Private
     ("100066486", 2),  # Corporal
     ("100066487", 7),  # JS
-    ("100066489", 15), # Sergeant
-    ("100066495", 35), # SS
-    ("100066500", 50), # SM
-    ("100066501", 70), # JL
-    ("100066503", 80), # Lieutenant
-    ("100066509", 100), # SL
-    ("100066514", 115) # Captain
+    ("100066489", 15),  # Sergeant
+    ("100066495", 35),  # SS
+    ("100066500", 50),  # SM
+    ("100066501", 70),  # JL
+    ("100066503", 80),  # Lieutenant
+    ("100066509", 100),  # SL
+    ("100066514", 115)  # Captain
 ]
 
 policeRanks = [
     ("99365640", 1),  # Cadet
     ("347256014", 2),  # Junior Militiaman
     ("346316041", 7),  # Militiaman
-    ("100026044", 15), # Senior Militiaman
-    ("100026045", 35), # Subunit Leader
-    ("100026046", 50), # Sergeant Major
-    ("100026047", 70), # Junior Lieutenant
-    ("100026053", 80), # Lieutenant
-    ("107041293", 100), # Senior Lieutenant
-    ("100026067", 115) # Captain
+    ("100026044", 15),  # Senior Militiaman
+    ("100026045", 35),  # Subunit Leader
+    ("100026046", 50),  # Sergeant Major
+    ("100026047", 70),  # Junior Lieutenant
+    ("100026053", 80),  # Lieutenant
+    ("107041293", 100),  # Senior Lieutenant
+    ("100026067", 115)  # Captain
 ]
 
 generalRanks = {
     "military": [
-        ("100366937", 1),   # Armed Forces Enlisted
-        ("100366954", 15),  # Armed Forces Officer
-        ("100366960", 100)  # Armed Forces Leadership
+        ("100366937", 1),  # Armed Forces Enlisted
+        ("100366954", 70),  # Armed Forces Officer
+        ("100366960", 150)  # Armed Forces Leadership
     ],
     "police": [
-        ("328484011", 1),   # Law Enforcement Enlisted
-        ("324914090", 15),  # Law Enforcement Officer
-        ("324358078", 70)   # Law Enforcement Leadership
+        ("328484011", 1),  # Law Enforcement Enlisted
+        ("324914090", 70),  # Law Enforcement Officer
+        ("324358078", 150)  # Law Enforcement Leadership
     ],
     "party": [
-        ("100366970", 1),   # Ministry Employee
-        ("100366976", 10),  # Ministry Officer
-        ("100366986", 45)   # Ministry Leadership
+        ("100366970", 1),  # Ministry Employee
+        ("100366976", 66),  # Ministry Officer
+        ("100366986", 120)  # Ministry Leadership
     ]
 }
+
 
 def get_policeRanks(points):
     for rank, threshold in reversed(policeRanks):
@@ -117,11 +121,13 @@ def get_policeRanks(points):
             return {"rank": rank, "threshold": threshold}
     return {"rank": "99365640", "threshold": 1}
 
+
 def get_militaryRanks(points):
     for rank, threshold in reversed(militaryRanks):
         if points >= threshold:
             return {"rank": rank, "threshold": threshold}
     return {"rank": "100066428", "threshold": 1}
+
 
 def get_partyRanks(points):
     for rank, threshold in reversed(partyRanks):
@@ -136,6 +142,7 @@ def get_generalRanks(points, system):
         if points >= threshold:
             return {"rank": rank, "threshold": threshold}
     return {"rank": ranks[0][0], "threshold": ranks[0][1]}
+
 
 @app.route('/get_player/<userId>', methods=['GET'])
 def get_player(userId):
@@ -306,8 +313,11 @@ def get_roblox_rank(user_id, group, t):
         return None
 
 
-@app.route('/update_player/<userId>/<int:politicalPower>/<int:militaryExperience>/<int:policeAuthority>/<int:partyPlayTime>/<int:militaryPlayTime>/<int:policePlayTime>/<int:timeLastReset>/<addType>/<int:pointMultiplier>', methods=['POST'])
-def update_player(userId, politicalPower, militaryExperience, policeAuthority, partyPlayTime, militaryPlayTime, policePlayTime, timeLastReset, addType, pointMultiplier):
+@app.route(
+    '/update_player/<userId>/<int:politicalPower>/<int:militaryExperience>/<int:policeAuthority>/<int:partyPlayTime>/<int:militaryPlayTime>/<int:policePlayTime>/<int:timeLastReset>/<addType>/<int:pointMultiplier>',
+    methods=['POST'])
+def update_player(userId, politicalPower, militaryExperience, policeAuthority, partyPlayTime, militaryPlayTime,
+                  policePlayTime, timeLastReset, addType, pointMultiplier):
     conn = get_db_connection()
     c = conn.cursor()
     c.execute("""
@@ -318,8 +328,10 @@ def update_player(userId, politicalPower, militaryExperience, policeAuthority, p
             partyplaytime = %s, militaryplaytime = %s, policeplaytime = %s,
             timelastreset = %s, pointmultiplier = %s
     """, (
-        userId, politicalPower, militaryExperience, policeAuthority, partyPlayTime, militaryPlayTime, policePlayTime, timeLastReset, pointMultiplier,
-        politicalPower, militaryExperience, policeAuthority, partyPlayTime, militaryPlayTime, policePlayTime, timeLastReset, pointMultiplier
+        userId, politicalPower, militaryExperience, policeAuthority, partyPlayTime, militaryPlayTime, policePlayTime,
+        timeLastReset, pointMultiplier,
+        politicalPower, militaryExperience, policeAuthority, partyPlayTime, militaryPlayTime, policePlayTime,
+        timeLastReset, pointMultiplier
     ))
     conn.commit()
     conn.close()
@@ -357,11 +369,11 @@ def update_player(userId, politicalPower, militaryExperience, policeAuthority, p
     mainRank = int(get_roblox_rank(userId, "mainGroup", "short") or 0)
     botMainRank = int(get_roblox_rank("8240319152", "mainGroup", "short") or 0)
     app.logger.info(f"botMainRank is {botMainRank} and playerMainRank is {mainRank}")
-    
+
     if mainRank >= botMainRank:
         app.logger.info("Player main rank is too high no change")
         return jsonify({"Update": "No Main Group Rank Change"}), 200
-    
+
     points_dict = {
         "party": politicalPower,
         "military": militaryExperience,
@@ -373,7 +385,7 @@ def update_player(userId, politicalPower, militaryExperience, policeAuthority, p
     app.logger.info(f"Most played system have {highest_points} points")
     general_rank_info = get_generalRanks(highest_points, highest_system)
     general_rank_threshold = general_rank_info["threshold"]
-    general_rank=general_rank_info["rank"]
+    general_rank = general_rank_info["rank"]
     app.logger.info(f"general_rank_threshold is {general_rank_threshold} and general_rank is {general_rank}")
 
     if 0 <= highest_points - general_rank_threshold < pointMultiplier:
@@ -391,6 +403,70 @@ def update_player(userId, politicalPower, militaryExperience, policeAuthority, p
     }
     return jsonify(response), 200
 
+@app.route('/addPoint/<userId>/<pointType>/<int:amount>', methods=['POST'])
+def addPoint(userId, pointType, amount):
+    if pointType not in ['politicalPower', 'militaryExperience', 'policeAuthority']:
+        return jsonify({'error': 'Invalid pointType'}), 400
+
+    conn = get_db_connection()
+    c = conn.cursor()
+
+    c.execute("SELECT politicalpower, militaryexperience, policeauthority FROM players WHERE userid = %s", (userId,))
+    result = c.fetchone()
+
+    if result is None:
+        return jsonify({'error': 'User not found'}), 404
+
+    points = {
+        'politicalPower': result[0],
+        'militaryExperience': result[1],
+        'policeAuthority': result[2]
+    }
+
+    points[pointType] += amount
+
+    c.execute(f"UPDATE players SET {pointType.lower()} = %s WHERE userid = %s", (points[pointType], userId))
+    conn.commit()
+    conn.close()
+
+    return jsonify({'message': f'{pointType} updated successfully', 'newValue': points[pointType]}), 200
+
+@app.route('/update_metadata/<userId>/<int:partyPlayTime>/<int:militaryPlayTime>/<int:policePlayTime>/<int:timeLastReset>/<addType>/<int:pointMultiplier>', methods=['POST'])
+def update_metadata(userId, partyPlayTime, militaryPlayTime, policePlayTime, timeLastReset, addType, pointMultiplier):
+    conn = get_db_connection()
+    c = conn.cursor()
+    c.execute("""
+        INSERT INTO players (userid, partyplaytime, militaryplaytime, policeplaytime, timelastreset, pointmultiplier)
+        VALUES (%s, %s, %s, %s, %s, %s)
+        ON CONFLICT (userid) DO UPDATE
+        SET partyplaytime = %s, militaryplaytime = %s, policeplaytime = %s,
+            timelastreset = %s, pointmultiplier = %s
+    """, (
+        userId, partyPlayTime, militaryPlayTime, policePlayTime, timeLastReset, pointMultiplier,
+        partyPlayTime, militaryPlayTime, policePlayTime, timeLastReset, pointMultiplier
+    ))
+    conn.commit()
+    conn.close()
+
+    return jsonify({'message': 'Metadata updated successfully'}), 200
+
+
+@app.route('/get_points/<userId>', methods=['GET'])
+def get_points(userId):
+    conn = get_db_connection()
+    c = conn.cursor()
+    c.execute("SELECT politicalpower, militaryexperience, policeauthority FROM players WHERE userid = %s", (userId,))
+    result = c.fetchone()
+    conn.close()
+
+    if result is None:
+        return jsonify({'error': 'User not found'}), 404
+
+    return jsonify({
+        'politicalPower': result[0],
+        'militaryExperience': result[1],
+        'policeAuthority': result[2]
+    }), 200
 
 @app.route('/admin/add_stat', methods=['POST'])
 def add_stat():
@@ -472,14 +548,14 @@ def add_stat():
 
     bot_main_rank = int(get_roblox_rank("8240319152", "mainGroup", "short") or 0)
     player_main_rank = int(get_roblox_rank(userid, "mainGroup", "short") or 0)
-    bot_division_rank = int(get_roblox_rank("8240319152", group , "short") or 0)
-    player_division_rank = int(get_roblox_rank(userid, group , "short") or 0)
+    bot_division_rank = int(get_roblox_rank("8240319152", group, "short") or 0)
+    player_division_rank = int(get_roblox_rank(userid, group, "short") or 0)
 
     if bot_division_rank > player_division_rank:
         update_roblox_rank(userid, group, specific_rank_info["rank"])
         response["divisionPromotion"] = f"Player division rank set to {specific_rank_info['rank']}"
     else:
-        response["divisionPromotion"]="Player division rank unchanged because the current rank is too high"
+        response["divisionPromotion"] = "Player division rank unchanged because the current rank is too high"
 
     points_dict = {
         "party": political_power,
@@ -489,19 +565,20 @@ def add_stat():
     highest_system = max(points_dict, key=points_dict.get)
     highest_points = points_dict[highest_system]
     response["highestSystem"] = highest_system
-    
+
     if bot_main_rank > player_main_rank:
         general_rank_info = get_generalRanks(highest_points, highest_system)
-        general_rank=general_rank_info["rank"]
+        general_rank = general_rank_info["rank"]
         update_roblox_rank(userid, "mainGroup", general_rank)
         response["mainPromotion"] = f"Player main division rank set to {general_rank}"
     else:
-        response["mainPromotion"]="Player main rank unchanged because the current rank is too high"
+        response["mainPromotion"] = "Player main rank unchanged because the current rank is too high"
     return jsonify(response), 200
+
 
 @app.route("/admin/add_player", methods=["POST"])
 def add_player():
-    if request.headers.get("Authorization") != AUTH_TOKEN:
+    if request.headers.get("Authorization") != os.getenv("AUTH_TOKEN"):
         return jsonify({"error": "Invalid authorization token"}), 401
     data = request.get_json()
     userid = data.get("userid")
