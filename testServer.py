@@ -431,7 +431,7 @@ def addPoint(userId, pointType, amount):
 
     return jsonify({'message': f'{pointType} updated successfully', 'newValue': points[pointType]}), 200
 
-@app.route('/update_metadata/<userId>/<int:partyPlayTime>/<int:militaryPlayTime>/<int:policePlayTime>/<int:timeLastReset>/<addType>/<int:pointMultiplier>', methods=['POST'])
+@app.route('/update_metadata/<userId>/<int:partyPlayTime>/<int:militaryPlayTime>/<int:policePlayTime>/<int:timeLastReset>/<int:pointMultiplier>', methods=['POST'])
 def update_metadata(userId, partyPlayTime, militaryPlayTime, policePlayTime, timeLastReset, addType, pointMultiplier):
     conn = get_db_connection()
     c = conn.cursor()
