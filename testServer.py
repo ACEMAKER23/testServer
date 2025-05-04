@@ -96,37 +96,37 @@ policeRanks = [
     ("100026067", 115)  # Captain
 ]
 
-longIdToShortId = [
-    ("99365640", 1),  # Cadet
-    ("347256014", 2),  # Junior Militiaman
-    ("346316041", 3),  # Militiaman
-    ("100026044", 4),  # Senior Militiaman
-    ("100026045", 5),  # Subunit Leader
-    ("100026046", 6),  # Sergeant Major
-    ("100026047", 7),  # Junior Lieutenant
-    ("100026053", 8),  # Lieutenant
-    ("107041293", 9),  # Senior Lieutenant
-    ("100026067", 10),  # Captain
+longIdToShortIdDict = {
+    "99365640": 1,  # Cadet
+    "347256014": 2,  # Junior Militiaman
+    "346316041": 3,  # Militiaman
+    "100026044": 4,  # Senior Militiaman
+    "100026045": 5,  # Subunit Leader
+    "100026046": 6,  # Sergeant Major
+    "100026047": 7,  # Junior Lieutenant
+    "100026053": 8,  # Lieutenant
+    "107041293": 9,  # Senior Lieutenant
+    "100026067": 10,  # Captain
 
-    ("100066428", 1),  # Private
-    ("100066486", 2),  # Corporal
-    ("100066487", 3),  # JS
-    ("100066489", 4),  # Sergeant
-    ("100066495", 5),  # SS
-    ("100066500", 6),  # SM
-    ("100066501", 7),  # JL
-    ("100066503", 8),  # Lieutenant
-    ("100066509", 9),  # SL
-    ("100066514", 10),  # Captain
+    "100066428": 1,  # Private
+    "100066486": 2,  # Corporal
+    "100066487": 3,  # JS
+    "100066489": 4,  # Sergeant
+    "100066495": 5,  # SS
+    "100066500": 6,  # SM
+    "100066501": 7,  # JL
+    "100066503": 8,  # Lieutenant
+    "100066509": 9,  # SL
+    "100066514": 10,  # Captain
 
-    ("99362899", 1),  # PM
-    ("99759441", 2),  # PC
-    ("99759446", 3),  # PB
-    ("99759448", 4),  # BS
-    ("99759449", 5),  # PS
-    ("107389287", 6),  # Party Committee
-    ("356554074", 7)  # PSA
-]
+    "99362899": 1,  # PM
+    "99759441": 2,  # PC
+    "99759446": 3,  # PB
+    "99759448": 4,  # BS
+    "99759449": 5,  # PS
+    "107389287": 6,  # Party Committee
+    "356554074": 7   # PSA
+}
 
 generalRanks = {
     "military": [
@@ -570,7 +570,7 @@ def add_stat():
         app.logger.info(f"Changing political power to {political_power}")
         group = "party"
         specific_rank_info = get_partyRanks(political_power)
-        rankNumID=longIdToShortId[specific_rank_info['rank']]
+        rankNumID=longIdToShortIdDict.get(specific_rank_info['rank'], 0)
         if (not rankNumID == player_party_rank) and (rankNumID < bot_party_rank):
             ##new_player_party_rank = int(get_roblox_rank(userid, "party", "short") or 0)
             update_roblox_rank(userid, group, specific_rank_info["rank"])
@@ -592,7 +592,8 @@ def add_stat():
         app.logger.info(f"Changing military experience to {military_experience}")
         group = "military"
         specific_rank_info = get_militaryRanks(military_experience)   ## new rank
-        rankNumID = longIdToShortId[specific_rank_info['rank']]
+        rankNumID = longIdToShortIdDict.get(specific_rank_info['rank'], 0)
+
         if (not rankNumID == player_military_rank) and (rankNumID < bot_military_rank):
             update_roblox_rank(userid, group, specific_rank_info["rank"])
             response["divisionPromotion" ] = f"Player Military Rank Changed to {specific_rank_info['rank']}"
@@ -603,7 +604,8 @@ def add_stat():
         app.logger.info(f"Changing police authority to {military_experience}")
         group = "police"
         specific_rank_info = get_policeRanks(police_authority)     ## new rank
-        rankNumID = longIdToShortId[specific_rank_info['rank']]
+        rankNumID = longIdToShortIdDict.get(specific_rank_info['rank'], 0)
+
         if (not rankNumID == player_police_rank) and (rankNumID < bot_party_rank):
             update_roblox_rank(userid, group, specific_rank_info["rank"])
             response["divisionPromotion"] = f"Player Police Rank Changed to {specific_rank_info['rank']}"
