@@ -96,7 +96,7 @@ policeRanks = [
     ("100026067", 115)  # Captain
 ]
 
-longIdToShortIdDict = {
+longIdToShortIdDict = { #hard coded stuff, must be change if the rank in group change
     "99365640": 1,  # Cadet
     "347256014": 2,  # Junior Militiaman
     "346316041": 3,  # Militiaman
@@ -123,9 +123,9 @@ longIdToShortIdDict = {
     "99759441": 2,  # PC
     "99759446": 3,  # PB
     "99759448": 4,  # BS
-    "99759449": 5,  # PS
-    "107389287": 6,  # Party Committee
-    "356554074": 7   # PSA
+    "99759449": 6,  # PS
+    "107389287": 10,  # Party Committee
+    "356554074": 11   # PSA
 }
 
 generalRanks = {
