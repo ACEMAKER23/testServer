@@ -660,31 +660,7 @@ def add_stat():
                     update_roblox_rank(userid, "mainGroup", "100366937")
                     response["mainPromotion"] = f"Player Military Rank Changed to military enlisted"
 
-        return jsonify(response), 200
-
-
-
-
-
-
-    points_dict = {
-        "party": political_power,
-        "military": military_experience,
-        "police": police_authority
-    }
-    highest_system = max(points_dict, key=points_dict.get)
-    highest_points = points_dict[highest_system]
-    response["highestSystem"] = highest_system
-
-    if bot_main_rank > player_main_rank:
-        general_rank_info = get_generalRanks(highest_points, highest_system)
-        general_rank = general_rank_info["rank"]
-        update_roblox_rank(userid, "mainGroup", general_rank)
-        response["mainPromotion"] = f"Player main division rank set to {general_rank}"
-    else:
-        response["mainPromotion"] = "Player main rank unchanged because the current rank is too high"
     return jsonify(response), 200
-
 
 @app.route("/admin/add_player", methods=["POST"])
 def add_player():
