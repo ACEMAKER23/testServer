@@ -540,7 +540,7 @@ def add_stat():
         new_player_party_rank = int(get_roblox_rank(userid, "party", "short") or 0)
         if (not new_player_party_rank == player_party_rank) and (new_player_party_rank < bot_party_rank):
             update_roblox_rank(userid, group, specific_rank_info["rank"])
-            response["divisionPromotion"] = f"Player Party Rank Changed to {specific_rank_info["rank"]}"
+            response["divisionPromotion"] = f"Player Party Rank Changed to {specific_rank_info['rank']}"
         cur.execute("""
             UPDATE players
             SET politicalpower = %s,
@@ -560,7 +560,7 @@ def add_stat():
         new_player_military_rank = int(get_roblox_rank(userid, "military", "short") or 0)
         if (not new_player_military_rank == player_military_rank) and (new_player_military_rank < bot_military_rank):
             update_roblox_rank(userid, group, specific_rank_info["rank"])
-            response["divisionPromotion" ] = f"Player Military Rank Changed to {specific_rank_info["rank"]}"
+            response["divisionPromotion" ] = f"Player Military Rank Changed to {specific_rank_info['rank']}"
     elif stat == "policeauthority":
         police_authority += amount
         app.logger.info(f"Changing police authority to {military_experience}")
@@ -569,7 +569,7 @@ def add_stat():
         new_player_police_rank = int(get_roblox_rank(userid, "police", "short") or 0)
         if (not new_player_police_rank == player_police_rank) and (new_player_police_rank < bot_party_rank):
             update_roblox_rank(userid, group, specific_rank_info["rank"])
-            response["divisionPromotion"] = f"Player Military Rank Changed to {specific_rank_info["rank"]}"
+            response["divisionPromotion"] = f"Player Military Rank Changed to {specific_rank_info['rank']}"
     else:
         return jsonify({"error": "Invalid Stat Type"}), 400
 
