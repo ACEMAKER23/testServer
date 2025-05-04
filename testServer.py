@@ -571,6 +571,7 @@ def add_stat():
         group = "party"
         specific_rank_info = get_partyRanks(political_power)
         rankNumID=longIdToShortIdDict.get(specific_rank_info['rank'], 0)
+        app.logger.info(f"Rank {rankNumID} and {specific_rank_info['rank']}")
         if (not rankNumID == player_party_rank) and (rankNumID < bot_party_rank):
             ##new_player_party_rank = int(get_roblox_rank(userid, "party", "short") or 0)
             update_roblox_rank(userid, group, specific_rank_info["rank"])
