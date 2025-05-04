@@ -438,7 +438,7 @@ def update_player(userId, politicalPower, militaryExperience, policeAuthority, p
 
 @app.route('/add_point/<userid>/<pointType>/<int:amount>', methods=['POST'])
 def addPoint(userid, pointType, amount):
-    if pointType not in ['politicalPower', 'militaryExperience', 'policeAuthority']:
+    if pointType not in ['politicalpower', 'militaryexperience', 'policeauthority']:
         return jsonify({'error': 'Invalid pointType'}), 400
 
     conn = get_db_connection()
@@ -541,7 +541,7 @@ def addPoint(userid, pointType, amount):
     conn.close()
 
     app.logger.info(f"here")
-    if new_player_police_rank >= new_player_military_rank:  ## police changed
+    if new_player_police_rank:  ## police changed
         if 14 <= new_player_police_rank <= 16:
             if player_military_rank < 14 or player_main_rank == 3:  ## police crossed the leader, yet military is not already a leader
                 if player_main_rank < bot_main_rank and player_main_rank != 73:
@@ -558,7 +558,7 @@ def addPoint(userid, pointType, amount):
                     update_roblox_rank(userid, "mainGroup", "328484011")
                     response["mainPromotion"] = f"Player Police Rank Changed to law enforcement enlisted"
 
-    elif new_player_military_rank > new_player_police_rank:
+    elif new_player_military_rank:
         if 14 <= new_player_military_rank <= 16:
             if player_police_rank < 14 or player_main_rank == 3:  ## militarty crossed the leader, yet police is not already a leader
                 if player_main_rank < bot_main_rank and player_main_rank != 69:
