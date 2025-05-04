@@ -107,7 +107,7 @@ generalRanks = {
         ("324914090", 70),  # Law Enforcement Officer
         ("324358078", 150)  # Law Enforcement Leadership
     ],
-    "party": [
+    "minstry": [
         ("100366970", 1),  # Ministry Employee
         ("100366976", 66),  # Ministry Officer
         ("100366986", 120)  # Ministry Leadership
@@ -403,6 +403,7 @@ def update_player(userId, politicalPower, militaryExperience, policeAuthority, p
     }
     return jsonify(response), 200
 
+
 @app.route('/add_point/<userId>/<pointType>/<int:amount>', methods=['POST'])
 def addPoint(userId, pointType, amount):
     if pointType not in ['politicalPower', 'militaryExperience', 'policeAuthority']:
@@ -423,6 +424,10 @@ def addPoint(userId, pointType, amount):
         'policeAuthority': result[2]
     }
 
+    if pointType == 'politicalPower':
+        points[pointType] += amount
+
+
     points[pointType] += amount
 
     c.execute(f"UPDATE players SET {pointType.lower()} = %s WHERE userid = %s", (points[pointType], userId))
@@ -431,7 +436,10 @@ def addPoint(userId, pointType, amount):
 
     return jsonify({'message': f'{pointType} updated successfully', 'newValue': points[pointType]}), 200
 
-@app.route('/update_metadata/<userId>/<int:partyPlayTime>/<int:militaryPlayTime>/<int:policePlayTime>/<int:timeLastReset>/<int:pointMultiplier>', methods=['POST'])
+
+@app.route(
+    '/update_metadata/<userId>/<int:partyPlayTime>/<int:militaryPlayTime>/<int:policePlayTime>/<int:timeLastReset>/<int:pointMultiplier>',
+    methods=['POST'])
 def update_metadata(userId, partyPlayTime, militaryPlayTime, policePlayTime, timeLastReset, pointMultiplier):
     conn = get_db_connection()
     c = conn.cursor()
@@ -463,8 +471,9 @@ def get_points(userId):
         app.logger.info(f"Not Data returned")
         return jsonify({'error': 'User not found'}), 404
     app.logger.info(f"Data returned, {result[0]}, {result[1]}, {result[2]}")
-    
-    return jsonify({'politicalPower': result[0],'militaryExperience': result[1],'policeAuthority': result[2]}), 200
+
+    return jsonify({'politicalPower': result[0], 'militaryExperience': result[1], 'policeAuthority': result[2]}), 200
+
 
 @app.route('/admin/add_stat', methods=['POST'])
 def add_stat():
@@ -509,18 +518,58 @@ def add_stat():
     military_experience = result[1]
     police_authority = result[2]
 
+    player_military_rank = int(get_roblox_rank(userid, "military", "short") or 0) ## old ranks
+    player_police_rank = int(get_roblox_rank(userid, "police", "short") or 0)
+    player_party_rank = int(get_roblox_rank(userid, "party", "short") or 0)
+    player_main_rank = int(get_roblox_rank(userid, "mainGroup", "short") or 0)
+
+    response = {
+        "politicalPower": political_power,
+        "militaryExperience": military_experience,
+        "policeAuthority": police_authority,
+        "highestSystem": "unknown",
+        "divisionPromotion": "Player Rank Didn't Change",
+        "mainPromotion": "Player Rank Didn't Change",
+    }
+
     if stat == "politicalpower":
         political_power += amount
+        app.logger.info(f"Changing political power to {political_power}")
         group = "party"
         specific_rank_info = get_partyRanks(political_power)
+        new_player_party_rank = int(get_roblox_rank(userid, "party", "short") or 0)
+        if (not new_player_party_rank == player_party_rank) and (new_player_party_rank < bot_party_rank):
+            update_roblox_rank(userid, group, specific_rank_info["rank"])
+            response["divisionPromotion"] = f"Player Party Rank Changed to {specific_rank_info["rank"]}"
+        cur.execute("""
+            UPDATE players
+            SET politicalpower = %s,
+                militaryexperience = %s,
+                policeauthority = %s
+                WHERE userid = %s
+        """, (political_power, military_experience, police_authority, userid))
+        conn.commit()
+        cur.close()
+        conn.close()
+        return jsonify(response), 200
     elif stat == "militaryexperience":
         military_experience += amount
+        app.logger.info(f"Changing military experience to {military_experience}")
         group = "military"
-        specific_rank_info = get_militaryRanks(military_experience)
+        specific_rank_info = get_militaryRanks(military_experience)   ## new rank
+        new_player_military_rank = int(get_roblox_rank(userid, "military", "short") or 0)
+        if (not new_player_military_rank == player_military_rank) and (new_player_military_rank < bot_military_rank):
+            update_roblox_rank(userid, group, specific_rank_info["rank"])
+            response["divisionPromotion" ] = f"Player Military Rank Changed to {specific_rank_info["rank"]}"
     elif stat == "policeauthority":
         police_authority += amount
+        app.logger.info(f"Changing police authority to {military_experience}")
         group = "police"
-        specific_rank_info = get_policeRanks(police_authority)
+        specific_rank_info = get_policeRanks(police_authority)     ## new rank
+        new_player_police_rank = int(get_roblox_rank(userid, "police", "short") or 0)
+        if (not new_player_police_rank == player_police_rank) and (new_player_police_rank < bot_party_rank):
+            update_roblox_rank(userid, group, specific_rank_info["rank"])
+            response["divisionPromotion"] = f"Player Military Rank Changed to {specific_rank_info["rank"]}"
     else:
         return jsonify({"error": "Invalid Stat Type"}), 400
 
@@ -535,25 +584,48 @@ def add_stat():
     cur.close()
     conn.close()
 
-    response = {
-        "politicalPower": political_power,
-        "militaryExperience": military_experience,
-        "policeAuthority": police_authority,
-        "highestSystem": "unknown",
-        "divisionPromotion": "Player Rank Didn't Change",
-        "mainPromotion": "Player Rank Didn't Change",
-    }
-
-    bot_main_rank = int(get_roblox_rank("8240319152", "mainGroup", "short") or 0)
     player_main_rank = int(get_roblox_rank(userid, "mainGroup", "short") or 0)
-    bot_division_rank = int(get_roblox_rank("8240319152", group, "short") or 0)
-    player_division_rank = int(get_roblox_rank(userid, group, "short") or 0)
 
-    if bot_division_rank > player_division_rank:
-        update_roblox_rank(userid, group, specific_rank_info["rank"])
-        response["divisionPromotion"] = f"Player division rank set to {specific_rank_info['rank']}"
-    else:
-        response["divisionPromotion"] = "Player division rank unchanged because the current rank is too high"
+    if new_player_police_rank:                                          ## police changed
+        if new_player_police_rank <= 16 and new_player_police_rank >= 14:
+            if player_military_rank <= 13 or player_military_rank >=15:## police crossed the leader, yet military is not already a leader
+                if player_main_rank < bot_main_rank and player_main_rank != 73:
+                    update_roblox_rank(userid, "mainGroup", "324358078")
+                    response["mainPromotion"] = f"Player Police Rank Changed to law enforcement leader"
+        elif new_player_police_rank >= 7 and new_player_police_rank <=13:
+            if player_military_rank < 7 or player_military_rank > 13:
+                if player_main_rank < bot_main_rank and player_main_rank != 72:
+                    update_roblox_rank(userid, "mainGroup", "324914090")
+                    response["mainPromotion"] = f"Player Police Rank Changed to law enforcement officer"
+        elif new_player_police_rank <= 6 and new_player_police_rank >=1:
+            if player_military_rank > 6 or player_military_rank < 1:
+                if player_main_rank < bot_main_rank and player_main_rank != 71:
+                    update_roblox_rank(userid, "mainGroup", "328484011")
+                    response["mainPromotion"] = f"Player Police Rank Changed to law enforcement enlisted"
+
+    elif new_player_military_rank:
+        if new_player_military_rank <= 16 and new_player_military_rank >= 14:
+            if player_police_rank < 14:             ## militarty crossed the leader, yet police is not already a leader
+                if player_main_rank < bot_main_rank and player_main_rank != 69:
+                    update_roblox_rank(userid, "mainGroup", "100366960")
+                    response["mainPromotion"] = f"Player Military Rank Changed to military leader"
+        elif new_player_military_rank <=13 and new_player_military_rank >= 7:
+            if player_police_rank < 7:
+                if player_main_rank < bot_main_rank and player_main_rank != 63:  ## militarty crossed the officer, yet police is not already a officer
+                    update_roblox_rank(userid, "mainGroup", "100366954")
+                    response["mainPromotion"] = f"Player Military Rank Changed to military officer"
+        elif new_player_military_rank <= 6 and new_player_military_rank >=1:
+            if player_police_rank < 1:                                       ## militarty crossed the enlisted, yet police is lower than already a englisted
+                if player_main_rank < bot_main_rank and player_main_rank != 61:
+                    update_roblox_rank(userid, "mainGroup", "100366937")
+                    response["mainPromotion"] = f"Player Military Rank Changed to military enlisted"
+
+        return jsonify(response), 200
+
+
+
+
+
 
     points_dict = {
         "party": political_power,
@@ -604,3 +676,9 @@ def add_player():
         cur.close()
         conn.close()
         return jsonify({"error": str(e)}), 500
+
+
+bot_military_rank = int(get_roblox_rank("8240319152", "military", "short") or 999)
+bot_police_rank = int(get_roblox_rank("8240319152", "police", "short") or 999)
+bot_party_rank = int(get_roblox_rank("8240319152", "party", "short") or 999)
+bot_main_rank = int(get_roblox_rank("8240319152", "mainGroup", "short") or 999)
