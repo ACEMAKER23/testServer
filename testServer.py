@@ -602,10 +602,11 @@ def add_stat():
             update_roblox_rank(userid, group, specific_rank_info["rank"])
             response["divisionPromotion" ] = f"Player Military Rank Changed to {specific_rank_info['rank']}"
             new_player_military_rank = int(get_roblox_rank(userid, "military", "short") or 0)
+            app.logger.info(f"{new_player_military_rank}")
     elif stat == "policeauthority":
         police_authority += amount
         response["policeAuthority"] = police_authority
-        app.logger.info(f"Changing police authority to {military_experience}")
+        app.logger.info(f"Changing police authority to {police_authority}")
         group = "police"
         specific_rank_info = get_policeRanks(police_authority)     ## new rank
         rankNumID = longIdToShortIdDict.get(specific_rank_info['rank'], 0)
@@ -615,6 +616,7 @@ def add_stat():
             update_roblox_rank(userid, group, specific_rank_info["rank"])
             response["divisionPromotion"] = f"Player Police Rank Changed to {specific_rank_info['rank']}"
             new_player_police_rank = int(get_roblox_rank(userid, "police", "short") or 0)
+            app.logger.info(f"{new_player_police_rank}")
     else:
         return jsonify({"error": "Invalid Stat Type"}), 400
 
@@ -629,37 +631,37 @@ def add_stat():
     cur.close()
     conn.close()
 
-
+    app.logger.info(f"here")
     if new_player_police_rank:                                          ## police changed
         if 16 >= new_player_police_rank >= 14:
-            if player_military_rank <= 13 or player_military_rank >=15:## police crossed the leader, yet military is not already a leader
+            if player_military_rank < 14 or player_main_rank == 3:## police crossed the leader, yet military is not already a leader
                 if player_main_rank < bot_main_rank and player_main_rank != 73:
                     update_roblox_rank(userid, "mainGroup", "324358078")
                     response["mainPromotion"] = f"Player Police Rank Changed to law enforcement leader"
         elif 7 <= new_player_police_rank <= 13:
-            if player_military_rank < 7 or player_military_rank > 13:
+            if player_military_rank < 13 or player_main_rank == 3:
                 if player_main_rank < bot_main_rank and player_main_rank != 72:
                     update_roblox_rank(userid, "mainGroup", "324914090")
                     response["mainPromotion"] = f"Player Police Rank Changed to law enforcement officer"
         elif 6 >= new_player_police_rank >= 1:
-            if player_military_rank > 6 or player_military_rank < 1:
+            if player_military_rank < 1 or player_main_rank == 3:
                 if player_main_rank < bot_main_rank and player_main_rank != 71:
                     update_roblox_rank(userid, "mainGroup", "328484011")
                     response["mainPromotion"] = f"Player Police Rank Changed to law enforcement enlisted"
 
     elif new_player_military_rank:
         if 16 >= new_player_military_rank >= 14:
-            if player_police_rank < 14:             ## militarty crossed the leader, yet police is not already a leader
+            if player_police_rank < 14 or player_main_rank == 3:             ## militarty crossed the leader, yet police is not already a leader
                 if player_main_rank < bot_main_rank and player_main_rank != 69:
                     update_roblox_rank(userid, "mainGroup", "100366960")
                     response["mainPromotion"] = f"Player Military Rank Changed to military leader"
         elif 13 >= new_player_military_rank >= 7:
-            if player_police_rank < 7:
+            if player_police_rank < 7 or player_main_rank == 3:
                 if player_main_rank < bot_main_rank and player_main_rank != 63:  ## militarty crossed the officer, yet police is not already a officer
                     update_roblox_rank(userid, "mainGroup", "100366954")
                     response["mainPromotion"] = f"Player Military Rank Changed to military officer"
         elif 6 >= new_player_military_rank >= 1:
-            if player_police_rank < 1:                                       ## militarty crossed the enlisted, yet police is lower than already a englisted
+            if player_police_rank < 1 or player_main_rank == 3:                                       ## militarty crossed the enlisted, yet police is lower than already a englisted
                 if player_main_rank < bot_main_rank and player_main_rank != 61:
                     update_roblox_rank(userid, "mainGroup", "100366937")
                     response["mainPromotion"] = f"Player Military Rank Changed to military enlisted"
