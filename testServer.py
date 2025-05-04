@@ -609,8 +609,9 @@ def add_stat():
         group = "police"
         specific_rank_info = get_policeRanks(police_authority)     ## new rank
         rankNumID = longIdToShortIdDict.get(specific_rank_info['rank'], 0)
-        app.logger.info(f"Rank {rankNumID}, {player_police_rank}, and {specific_rank_info['rank']}")
-        if (not rankNumID == player_police_rank) and (rankNumID < bot_party_rank):
+        app.logger.info(f"Rank {rankNumID}, {player_police_rank}, {bot_police_rank}, and {specific_rank_info['rank']}")
+        if (not rankNumID == player_police_rank) and (rankNumID < bot_police_rank):
+            app.logger.info(f"Test succeeded")
             update_roblox_rank(userid, group, specific_rank_info["rank"])
             response["divisionPromotion"] = f"Player Police Rank Changed to {specific_rank_info['rank']}"
             new_player_police_rank = int(get_roblox_rank(userid, "police", "short") or 0)
