@@ -809,6 +809,10 @@ def add_player():
         return jsonify({"error": str(e)}), 500
 
 
+@app.route('/wakeUp', methods=['GET'])
+def wakeUp():
+    return jsonify({"message": "Server is Up"}), 200
+
 bot_military_rank = int(get_roblox_rank("8240319152", "military", "short") or 999)
 bot_police_rank = int(get_roblox_rank("8240319152", "police", "short") or 999)
 bot_party_rank = int(get_roblox_rank("8240319152", "party", "short") or 999)
